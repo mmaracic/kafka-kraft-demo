@@ -1,0 +1,6 @@
+kafka-producer:
+  bootstrap.servers: localhost:9092
+  topic: test-topic
+  client.id: kafka-producer-client
+  linger.ms: 10
+  acks: all

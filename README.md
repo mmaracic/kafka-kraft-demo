@@ -26,3 +26,11 @@ Provectus seems to be less mainintained recently, lastly in 2024 but it has more
 ### Previous example project 
 Previous example project with ZooKeeper based Kafka cluster including schema registry, Kafka Connect and UI:
 https://github.com/mmaracic/kafka-long-running-process/blob/master/docker-compose.yml
+
+## Running the project
+
+### Python
+Start producer with:
+```
+uv run -m src.kafka_producer_app
+```
