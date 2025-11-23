@@ -30,7 +30,7 @@ https://github.com/mmaracic/kafka-long-running-process/blob/master/docker-compos
 ## Running the project
 
 ### Python
-Start producer with:
+Start app (producer + consumer) with:
 ```
-uv run -m src.kafka_producer_app
+uv run -m src.kafka_app
 ```

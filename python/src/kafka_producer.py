@@ -6,7 +6,7 @@ import json
 import logging
 import uuid
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 from confluent_kafka import Producer as ConfluentProducer
 from src.model import MessageModel
 from src.config import BaseConfig
@@ -19,8 +19,10 @@ class ProducerConfig(BaseConfig):
     # Enable wrapper-based constructor extraction using these keys
     WRAPPER_DATA_PATH: ClassVar[Optional[str]] = "kafka-producer"
 
+    model_config = ConfigDict(extra="ignore")
+
     bootstrap_servers: str = Field(alias="bootstrap.servers")
-    topic: str = Field(alias="topic")
+    topic: str = Field(alias="topic", exclude=True)
     client_id: str = Field(alias="client.id")
     linger_ms: int = Field(alias="linger.ms")
     acks: str = Field(alias="acks")
@@ -34,16 +36,13 @@ class KafkaProducer:
     """
 
     _producer: ConfluentProducer
+    _topic: str
 
     def __init__(self, config: ProducerConfig) -> None:
-        self._config: ProducerConfig = config
-        conf: Dict[str, Any] = {
-            "bootstrap.servers": config.bootstrap_servers,
-            "client.id": config.client_id,
-            "linger.ms": config.linger_ms,
-            "acks": config.acks,
-        }
-        self._producer: ConfluentProducer = ConfluentProducer(conf)
+        self._producer: ConfluentProducer = ConfluentProducer(
+            config.model_dump(by_alias=True)
+        )
+        self._topic = config.topic
 
     def _delivery_report(self, err: Exception | None, msg: Any) -> None:
         if err is not None:
@@ -72,7 +71,7 @@ class KafkaProducer:
             ).model_dump()
         )
         self._producer.produce(
-            topic=self._config.topic,
+            topic=self._topic,
             key=None,
             value=payload,
             callback=self._delivery_report,

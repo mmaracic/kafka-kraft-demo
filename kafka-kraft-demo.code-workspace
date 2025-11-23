@@ -7,6 +7,15 @@
 	"settings": {},
 	"launch": {
 		"version": "0.2.0",
-		"configurations": []
+		"configurations": [
+			{
+				"name": "Python Debugger: Kafka Application",
+				"type": "debugpy",
+				"request": "launch",
+				"module": "src.kafka_app",
+				"console": "integratedTerminal",
+				"cwd": "${workspaceFolder}/python",
+			}
+		]
 	}
 }

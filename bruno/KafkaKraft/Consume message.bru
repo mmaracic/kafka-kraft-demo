@@ -1,0 +1,20 @@
+meta {
+  name: Consume message
+  type: http
+  seq: 1
+}
+
+get {
+  url: http://localhost:8000/consume?max_messages=50
+  body: none
+  auth: inherit
+}
+
+params:query {
+  max_messages: 50
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

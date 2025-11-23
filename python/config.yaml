@@ -4,3 +4,9 @@ kafka-producer:
   client.id: kafka-producer-client
   linger.ms: 10
   acks: all
+kafka-consumer:
+  bootstrap.servers: localhost:9092
+  topic: test-topic
+  group.id: kafka-consumer-group
+  auto.offset.reset: earliest
+  enable.auto.commit: false

@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 
 from src.kafka_producer import ProducerConfig, KafkaProducer
+from src.kafka_consumer import ConsumerConfig, KafkaConsumer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("kafka_producer_app")
@@ -30,11 +31,12 @@ app = FastAPI(title="Kafka Producer API")
 
 # app state
 _producer: KafkaProducer | None = None
+_consumer: KafkaConsumer | None = None
 
 
 @app.on_event("startup")
 def startup_event() -> None:
-    global _producer
+    global _producer, _consumer
     try:
         cfg_path = Path(__file__).resolve().parents[1] / "config.yaml"
         logger.info("Loading config from %s", cfg_path)
@@ -47,6 +49,11 @@ def startup_event() -> None:
         logger.info("ProducerConfig loaded for topic %s", config.topic)
 
         _producer = KafkaProducer(config)
+
+        # Initialize consumer from YAML consumer section if present
+        consumer_cfg = ConsumerConfig(source=cfg_data)
+        logger.info("ConsumerConfig loaded for topic %s", consumer_cfg.topic)
+        _consumer = KafkaConsumer(consumer_cfg)
     except Exception as exc:
         logger.exception("Failed to initialize Kafka producer: %s", exc)
         # leave _producer as None; endpoints will return 503
@@ -65,20 +72,47 @@ def produce_messages(
         raise HTTPException(status_code=503, detail="Producer not initialized")
 
     sent = 0
-    for i in range(n):
-        try:
+    try:
+        for _ in range(n):
             _producer.produce(req.text, timeout=1.0)
             sent += 1
-        except Exception as exc:
-            logger.exception("Failed to produce message #%d: %s", i, exc)
-            break
+    except Exception as exc:
+        logger.exception("Unexpected error during message production: %s", exc)
 
-    return {"topic": _producer._config.topic if _producer else None, "sent": sent}
+    return {"Messages sent": sent}
 
 
 @app.get("/")
 def root() -> dict[str, str]:
     return {"status": "ok", "service": "kafka-producer"}
+
+
+@app.get("/consume")
+def consume_messages(
+    max_messages: int = Query(10, ge=1, le=1000, description="Max messages to consume"),
+) -> dict[str, Any]:
+    """Consume up to `max_messages` from the configured consumer.
+
+    If the consumer was configured with `enable.auto.commit: false`, the
+    endpoint will explicitly commit each message after processing.
+    """
+    if _consumer is None:
+        raise HTTPException(status_code=503, detail="Consumer not initialized")
+
+    messages: list[Any] = []
+    consumed = 0
+
+    for message in _consumer.messages(timeout=1.0, auto_stop=True):
+        messages.append(message)
+        logger.info("Consumed message: %s", message)
+        consumed += 1
+        if consumed >= max_messages:
+            break
+
+    return {
+        "consumed": consumed,
+        "messages": messages,
+    }
 
 
 if __name__ == "__main__":
